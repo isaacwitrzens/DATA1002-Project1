@@ -1,9 +1,9 @@
 import pandas as pd
-df = pd.read_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Raw\HospitalisationsRawData.csv")
-df = df[df["Period"] == "22/23"]
-df = df[["LGA", "Period", "Rate per 100,000 population"]]
-df = df.rename(columns={"Rate per 100,000 population": "Rate_per_100k"})
-df.to_csv("HospitalisationsClean.csv", index=False)
+hosp = pd.read_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Raw\HospitalisationsRawData.csv")
+hosp = hosp[hosp["Period"] == "22/23"]
+hosp = hosp[["LGA", "Period", "Rate per 100,000 population"]]
+hosp = hosp.rename(columns={"Rate per 100,000 population": "Rate_per_100k"})
+hosp.to_csv("HospitalisationsClean.csv", index=False)
 
 crime = pd.read_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Raw\CrimeRawData.csv")
 crime = crime[[
@@ -15,18 +15,30 @@ crime = crime[[
 ]]
 
 crime["Suburb"] = crime["Suburb"].str.strip().str.upper()
+manual_map = {
+    "DARLINGTON": "SYDNEY",
+    "THE ROCKS": "SYDNEY",
+    "HILL TOP": "WINGECARRIBEE",
+    "LILLI PILLI": "SUTHERLAND SHIRE",
+    "GREEN POINT": "CENTRAL COAST",
+    "ENMORE": "INNER WEST",
+    "MARYLAND": "NEWCASTLE",
+    "SPRINGFIELD": "CENTRAL COAST",
+    "BARANGAROO": "SYDNEY",
+    "CRONULLA": "SUTHERLAND SHIRE",
+}
 
-crime_with_lga = crime.merge(
-    df[["LGA"]].drop_duplicates(),
-    how="left",
-    left_on="Suburb",
-    right_on="LGA"  # might need a mapping if Suburb != LGA
+crime["LGA"] = crime["Suburb"].replace(manual_map)
+crime_with_hosp = crime.merge(
+    hosp[["LGA", "Rate_per_100k"]],
+    on="LGA",
+    how="left"
 )
 
-unmatched = crime_with_lga[crime_with_lga["LGA"].isna()]["Suburb"].unique()
-print("Suburbs with no LGA match:", unmatched)
+unmatched = crime_with_hosp[crime_with_hosp["Rate_per_100k"].isna()]["Suburb"].unique()
+print("❌ Suburbs with no hospitalisation LGA match:", unmatched)
 
-crime_with_lga.to_csv(
+crime_with_hosp.to_csv(
     r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\CrimeWithHospitalisations.csv",
     index=False
 )
