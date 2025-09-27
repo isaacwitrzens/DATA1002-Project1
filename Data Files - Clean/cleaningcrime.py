@@ -1,8 +1,6 @@
 import os
 import pandas as pd
 
-# --- Functions ---
-
 def load_and_clean_crime(raw_path, clean_path):
     """Load raw crime data, select needed columns, save clean version."""
     df = pd.read_csv(raw_path)
@@ -111,5 +109,18 @@ crime_with_lga = drop_missing_lga(crime_with_lga)
 
 # ⬇️ Override CrimeClean.csv instead of making a new file
 crime_with_lga.to_csv(clean_crime, index=False)
-print("✅ Finished: CrimeClean.csv has been updated with LGA")
 
+
+CR = r'C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\CrimeClean.csv'
+crime = pd.read_csv(CR)
+month_cols = [c for c in crime.columns if "2022" in c or "2023" in c]
+crime["TotalCrimes"] = crime[month_cols].sum(axis=1)
+lga_crimes = (
+    crime.groupby("LGA", as_index=False)["TotalCrimes"]
+         .sum()
+         .sort_values("TotalCrimes", ascending=False)
+)
+out = CR.replace(".txt", "_LGA_CrimeCounts.csv").replace(".csv", "_LGA_CrimeCounts.csv")
+lga_crimes.to_csv(out, index=False)
+print("Saved:", out)
+print(lga_crimes.head(10))
