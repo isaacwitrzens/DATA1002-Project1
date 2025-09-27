@@ -122,5 +122,3 @@ lga_crimes = (
 )
 out = CR.replace(".txt", "_LGA_CrimeCounts.csv").replace(".csv", "_LGA_CrimeCounts.csv")
 lga_crimes.to_csv(out, index=False)
-print("Saved:", out)
-print(lga_crimes.head(10))
