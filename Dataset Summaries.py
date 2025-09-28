@@ -7,7 +7,7 @@ df = pd.read_csv(combined_file)
 
 #total crimes boxplot count vs lga
 plt.figure(figsize=(8,6))
-ax = df.boxplot(column="TotalCrimes", vert=False)
+df.boxplot(column="TotalCrimes", vert=False)
 plt.scatter(df["TotalCrimes"], [1]*len(df), alpha=0.6, color="blue")
 plt.title("Total Crimes by LGA")
 plt.xlabel("Total Crimes")
@@ -17,7 +17,7 @@ plt.show()
 
 # Licenses boxplot count vs lga
 plt.figure(figsize=(8,6))
-ax = df.boxplot(column="license_count", vert=False)
+df.boxplot(column="license_count", vert=False)
 plt.scatter(df["license_count"], [1]*len(df), alpha=0.6, color="green")
 plt.title("Liquor License Count by LGA")
 plt.xlabel("License Count")
@@ -27,7 +27,7 @@ plt.show()
 
 # Hospitalisations rate vs lga box plot
 plt.figure(figsize=(8,6))
-ax = df.boxplot(column="Rate_per_100k", vert=False)
+df.boxplot(column="Rate_per_100k", vert=False)
 plt.scatter(df["Rate_per_100k"], [1]*len(df), alpha=0.6, color="red")
 plt.title("Hospitalisation Rates by LGA")
 plt.xlabel("Rate per 100k")
