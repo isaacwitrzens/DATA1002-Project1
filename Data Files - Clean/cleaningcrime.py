@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 # selected columns from raw data to created clean data set
@@ -12,11 +13,8 @@ def load_and_clean_crime(raw_path, clean_path):
     ]
     df = df[["Suburb", "Offence category", "Subcategory"] + month_cols]
     df.dropna(subset=["Suburb"], inplace=True)
-
     df["TotalCrimes"] = df[month_cols].sum(axis=1)
-
     df = df.drop(columns=month_cols)
-
     df.to_csv(clean_path, index=False)
     return df
 
@@ -28,18 +26,18 @@ def normalise_suburbs(df, col="Suburb"):
     df[col] = df[col].str.strip().str.upper()
     return df
 
+def normalise_lga(df, col="LGA"):
+    if col in df.columns:
+        df[col] = df[col].str.replace(" LGA", "", regex=False).str.strip().str.upper()
+    return df
+
 def apply_manual_map(df, manual_map, col="Suburb"):
-    """Apply manual suburb corrections."""
     df[col] = df[col].replace(manual_map)
     return df
 
 def merge_crime_liquor(crime, liquor):
-    """Merge liquor LGA info into crime data."""
-    merged = crime.merge(
-        liquor[["Suburb", "LGA"]].drop_duplicates(),
-        on="Suburb",
-        how="left"
-    )
+    lookup = liquor[["Suburb","LGA"]].drop_duplicates()
+    merged = crime.merge(lookup, on="Suburb", how="left")
     return merged
 
 def drop_missing_lga(merged):
@@ -73,32 +71,30 @@ manual_map = {
     "CROA":"CRONULLA",
     "BARANGAROO SYDNEY": "BARANGAROO",
 }
+crime_df = load_and_clean_crime(raw_crime, clean_crime)
+liq_df = load_liquor(clean_liquor)
+crime_df = normalise_suburbs(crime_df)
+liq_df   = normalise_suburbs(liq_df)
+crime_df = apply_manual_map(crime_df, manual_map)
+liq_df   = apply_manual_map(liq_df, manual_map)
 
-df = load_and_clean_crime(raw_crime, clean_crime)
-liq = load_liquor(clean_liquor)
-
-df = normalise_suburbs(df)
-liq = normalise_suburbs(liq)
-
-df = apply_manual_map(df, manual_map)
-liq = apply_manual_map(liq, manual_map)
-
-crime_with_lga = merge_crime_liquor(df, liq)
-
+crime_with_lga = merge_crime_liquor(crime_df, liq_df)
 crime_with_lga = drop_missing_lga(crime_with_lga)
-#saving to the csv
+crime_with_lga = normalise_lga(crime_with_lga, "LGA")
+
 crime_with_lga.to_csv(clean_crime, index=False)
 
 #getting rid of the individual crimes and grouping by LGA
-CR = r'C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\CrimeClean.csv'
+CR = clean_crime
 crime = pd.read_csv(CR)
-month_cols = [c for c in crime.columns if "2022" in c or "2023" in c]
-crime["TotalCrimes"] = crime[month_cols].sum(axis=1)
+crime = normalise_lga(crime, "LGA")
+
 lga_crimes = (
     crime.groupby("LGA", as_index=False)["TotalCrimes"]
          .sum()
          .sort_values("TotalCrimes", ascending=False)
 )
-out = CR.replace(".txt", "_LGA_CrimeCounts.csv").replace(".csv", "_LGA_CrimeCounts.csv")
+
+out = os.path.splitext(CR)[0] + "_LGA_CrimeCounts.csv"
 lga_crimes.to_csv(out, index=False)
 
