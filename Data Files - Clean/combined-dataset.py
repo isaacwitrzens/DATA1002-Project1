@@ -41,6 +41,11 @@ rename_map = {
 for df in (crime, liquor, hosp):
     df["LGA"] = df["LGA"].replace(rename_map)
 
+bad_lgas = {"UNINCORPORATED NSW"}
+crime  = crime[~crime["LGA"].isin(bad_lgas)]
+liquor = liquor[~liquor["LGA"].isin(bad_lgas)]
+hosp   = hosp[~hosp["LGA"].isin(bad_lgas)]
+
 # --- Ensure numeric & aggregate to one row per LGA
 if "TotalCrimes" not in crime.columns:
     month_cols = [c for c in crime.columns if re.match(r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) 20\d{2}$", c)]
@@ -64,5 +69,6 @@ merged = (
     .merge(crime_agg,  on="LGA", how="left")
     .merge(liquor_agg, on="LGA", how="left")
 )
+
 
 merged.to_csv(out_file, index=False)
