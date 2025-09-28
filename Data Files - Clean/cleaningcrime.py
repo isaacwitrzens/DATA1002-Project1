@@ -1,6 +1,7 @@
-import os
 import pandas as pd
 
+# selected columns from raw data to created clean data set
+# selected only 2022/2023 dates and combined them into a count by crime
 def load_and_clean_crime(raw_path, clean_path):
     df = pd.read_csv(raw_path)
     month_cols = [
@@ -19,11 +20,11 @@ def load_and_clean_crime(raw_path, clean_path):
     df.to_csv(clean_path, index=False)
     return df
 
+# using liquor data set to give the crime data set an LGA column so that the datasets will only have the same LGAs
 def load_liquor(path):
     return pd.read_csv(path)
 
-def normalize_suburbs(df, col="Suburb"):
-    """Standardize suburb names: strip + uppercase."""
+def normalise_suburbs(df, col="Suburb"):
     df[col] = df[col].str.strip().str.upper()
     return df
 
@@ -44,6 +45,7 @@ def merge_crime_liquor(crime, liquor):
 def drop_missing_lga(merged):
     return merged.dropna(subset=["LGA"])
 
+#manually changing suburb names in both data sets to make them equal
 raw_crime = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Raw\CrimeRawData.csv"
 clean_crime = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\CrimeClean.csv"
 clean_liquor = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\LiquorLicenseClean.csv"
@@ -72,12 +74,11 @@ manual_map = {
     "BARANGAROO SYDNEY": "BARANGAROO",
 }
 
-# Run pipeline
 df = load_and_clean_crime(raw_crime, clean_crime)
 liq = load_liquor(clean_liquor)
 
-df = normalize_suburbs(df)
-liq = normalize_suburbs(liq)
+df = normalise_suburbs(df)
+liq = normalise_suburbs(liq)
 
 df = apply_manual_map(df, manual_map)
 liq = apply_manual_map(liq, manual_map)
@@ -85,11 +86,10 @@ liq = apply_manual_map(liq, manual_map)
 crime_with_lga = merge_crime_liquor(df, liq)
 
 crime_with_lga = drop_missing_lga(crime_with_lga)
-
-# ⬇️ Override CrimeClean.csv instead of making a new file
+#saving to the csv
 crime_with_lga.to_csv(clean_crime, index=False)
 
-
+#getting rid of the individual crimes and grouping by LGA
 CR = r'C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\CrimeClean.csv'
 crime = pd.read_csv(CR)
 month_cols = [c for c in crime.columns if "2022" in c or "2023" in c]
@@ -101,3 +101,4 @@ lga_crimes = (
 )
 out = CR.replace(".txt", "_LGA_CrimeCounts.csv").replace(".csv", "_LGA_CrimeCounts.csv")
 lga_crimes.to_csv(out, index=False)
+

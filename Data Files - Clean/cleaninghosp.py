@@ -2,6 +2,7 @@ import pandas as pd
 RAW_HOSP = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Raw\HospitalisationsRawData.csv"
 CLEAN_HOSP = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\HospitalisationsClean.csv"
 
+#getting rid of the unused columns
 def main():
     hosp = pd.read_csv(RAW_HOSP)
     hosp = hosp[hosp["Period"] == "22/23"]

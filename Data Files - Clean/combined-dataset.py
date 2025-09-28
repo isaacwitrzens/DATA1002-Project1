@@ -8,24 +8,26 @@ crime = pd.read_csv(crime_file)
 liquor = pd.read_csv(liquor_file)
 hosp = pd.read_csv(hosp_file)
 
+#standardising the column LGA in each dataset
 crime['LGA'] = crime['LGA'].str.replace(" LGA", "", regex=False).str.strip()
 liquor['LGA'] = liquor['LGA'].str.replace(" LGA", "", regex=False).str.strip()
 hosp['LGA'] = hosp['LGA'].str.replace(" LGA", "", regex=False).str.strip()
 hosp = hosp.drop(columns=['Period'])
 
+#nenaming outliers
 rename_map = {
     "Gundagai": "Cootamundra-Gundagai Regional",
     "Nambucca Valley": "Nambucca"
 }
-
 crime['LGA']  = crime['LGA'].replace(rename_map)
 liquor['LGA'] = liquor['LGA'].replace(rename_map)
 hosp['LGA']   = hosp['LGA'].replace(rename_map)
 
+#merging data sets
 merged = crime.merge(liquor, on="LGA", how="outer")
 merged = merged.merge(hosp, on="LGA", how="outer")
 
-
+#selecting the columns we want from the merge
 for col in ['TotalCrimes', 'license_count']:
     merged[col] = pd.to_numeric(merged[col], errors='coerce')
 merged = (merged.groupby('LGA', as_index=False)
