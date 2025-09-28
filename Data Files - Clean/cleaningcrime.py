@@ -22,24 +22,29 @@ def load_and_clean_crime(raw_path, clean_path):
 def load_liquor(path):
     return pd.read_csv(path)
 
+#normalising suburb names so theyre all upper case
 def normalise_suburbs(df, col="Suburb"):
     df[col] = df[col].str.strip().str.upper()
     return df
 
+#normalising lga names so theyre all upper case
 def normalise_lga(df, col="LGA"):
     if col in df.columns:
         df[col] = df[col].str.replace(" LGA", "", regex=False).str.strip().str.upper()
     return df
 
+#function to apply the manual map with name changes
 def apply_manual_map(df, manual_map, col="Suburb"):
     df[col] = df[col].replace(manual_map)
     return df
 
+#using the liqour dataset to give the suburbs in the crime data set their LGA
 def merge_crime_liquor(crime, liquor):
     lookup = liquor[["Suburb","LGA"]].drop_duplicates()
     merged = crime.merge(lookup, on="Suburb", how="left")
     return merged
 
+#getting rid of suburbs with missing LGA because then they cant be compared with the liquor dataset
 def drop_missing_lga(merged):
     return merged.dropna(subset=["LGA"])
 
@@ -71,6 +76,7 @@ manual_map = {
     "CROA":"CRONULLA",
     "BARANGAROO SYDNEY": "BARANGAROO",
 }
+#loading my functions
 crime_df = load_and_clean_crime(raw_crime, clean_crime)
 liq_df = load_liquor(clean_liquor)
 crime_df = normalise_suburbs(crime_df)

@@ -33,37 +33,26 @@ hosp["Rate_per_100k"] = (
 )
 hosp["Rate_per_100k"] = pd.to_numeric(hosp["Rate_per_100k"], errors="coerce")
 
-# --- Apply rename map
+# Apply rename map
 rename_map = {
     "GUNDAGAI": "COOTAMUNDRA-GUNDAGAI REGIONAL",
     "NAMBUCCA VALLEY": "NAMBUCCA",
 }
 for df in (crime, liquor, hosp):
     df["LGA"] = df["LGA"].replace(rename_map)
-
+#removeing the unincorporated nsw data because it was giving heavily skewed data - was an outlier unhelpful to analysis
 bad_lgas = {"UNINCORPORATED NSW"}
 crime  = crime[~crime["LGA"].isin(bad_lgas)]
 liquor = liquor[~liquor["LGA"].isin(bad_lgas)]
 hosp   = hosp[~hosp["LGA"].isin(bad_lgas)]
 
-# --- Ensure numeric & aggregate to one row per LGA
-if "TotalCrimes" not in crime.columns:
-    month_cols = [c for c in crime.columns if re.match(r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) 20\d{2}$", c)]
-    if month_cols:
-        crime[month_cols] = crime[month_cols].apply(pd.to_numeric, errors="coerce")
-        crime["TotalCrimes"] = crime[month_cols].sum(axis=1)
-    else:
-        raise ValueError("No TotalCrimes column and no month columns found in crime file.")
-
 crime["TotalCrimes"] = pd.to_numeric(crime["TotalCrimes"], errors="coerce")
 crime_agg = crime.groupby("LGA", as_index=False)["TotalCrimes"].sum()
 
-if "license_count" not in liquor.columns:
-    raise ValueError("Expected 'license_count' column in liquor file.")
 liquor["license_count"] = pd.to_numeric(liquor["license_count"], errors="coerce")
 liquor_agg = liquor.groupby("LGA", as_index=False)["license_count"].sum()
 
-# --- Merge
+# Merging of the data sets into the hospital data set so they all have the same LGA
 merged = (
     hosp[["LGA", "Rate_per_100k"]]
     .merge(crime_agg,  on="LGA", how="left")
