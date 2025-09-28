@@ -16,11 +16,11 @@ def normalise_lga(s: pd.Series) -> pd.Series:
     s = s.str.strip().str.upper()
     return s
 
-# --- Normalise LGA keys consistently
+# --- Normalise LGA
 for df in (crime, liquor, hosp):
     df["LGA"] = normalise_lga(df["LGA"])
 
-# --- Drop 'Period' if present
+# --- Drop 'Period'
 if "Period" in hosp.columns:
     hosp = hosp.drop(columns=["Period"])
 
@@ -33,7 +33,7 @@ hosp["Rate_per_100k"] = (
 )
 hosp["Rate_per_100k"] = pd.to_numeric(hosp["Rate_per_100k"], errors="coerce")
 
-# --- Apply rename map AFTER normalising (keys in UPPER)
+# --- Apply rename map
 rename_map = {
     "GUNDAGAI": "COOTAMUNDRA-GUNDAGAI REGIONAL",
     "NAMBUCCA VALLEY": "NAMBUCCA",
@@ -42,7 +42,6 @@ for df in (crime, liquor, hosp):
     df["LGA"] = df["LGA"].replace(rename_map)
 
 # --- Ensure numeric & aggregate to one row per LGA
-# CRIME: if TotalCrimes not present, sum month columns
 if "TotalCrimes" not in crime.columns:
     month_cols = [c for c in crime.columns if re.match(r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) 20\d{2}$", c)]
     if month_cols:
@@ -54,31 +53,16 @@ if "TotalCrimes" not in crime.columns:
 crime["TotalCrimes"] = pd.to_numeric(crime["TotalCrimes"], errors="coerce")
 crime_agg = crime.groupby("LGA", as_index=False)["TotalCrimes"].sum()
 
-# LIQUOR
 if "license_count" not in liquor.columns:
     raise ValueError("Expected 'license_count' column in liquor file.")
 liquor["license_count"] = pd.to_numeric(liquor["license_count"], errors="coerce")
 liquor_agg = liquor.groupby("LGA", as_index=False)["license_count"].sum()
 
-# --- Diagnostics: check overlap after normalisation/renames
-set_crime, set_liquor, set_hosp = set(crime_agg["LGA"]), set(liquor_agg["LGA"]), set(hosp["LGA"])
-print("Overlap:",
-      "crime∩hosp =", len(set_crime & set_hosp),
-      "| liquor∩hosp =", len(set_liquor & set_hosp))
-
-# --- Merge ONTO hospitals (left join) to avoid stray suburbs
+# --- Merge
 merged = (
     hosp[["LGA", "Rate_per_100k"]]
     .merge(crime_agg,  on="LGA", how="left")
     .merge(liquor_agg, on="LGA", how="left")
 )
 
-# Optional: see how many NaNs remain and sample a few problem LGAs
-print(merged.isna().sum())
-missing_crime = merged[merged["TotalCrimes"].isna()]["LGA"].head(10).tolist()
-missing_lic   = merged[merged["license_count"].isna()]["LGA"].head(10).tolist()
-print("Example LGAs missing crime:", missing_crime)
-print("Example LGAs missing liquor:", missing_lic)
-
 merged.to_csv(out_file, index=False)
-print(f"Saved {len(merged)} LGAs to {out_file}")
