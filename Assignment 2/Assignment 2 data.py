@@ -80,5 +80,40 @@ merged = crime.merge(licence_counts, on="Suburb", how="inner")
 # --------------------------
 merged.to_csv(output_path, index=False)
 
-print(f"✅ Cleaned and merged dataset saved to: {output_path}")
-print(merged.head(10))
+from sklearn.model_selection import train_test_split
+
+df = pd.read_csv("Cleaned.csv")
+X = df[[
+    "Hotel_Licences",
+    "Club_Licences",
+    "Packaged_Licences",
+    "OnPremises_Licences",
+    "ProducerWholesaler_Licences",
+    "Limited_Licences",
+    "Total_Licences"
+]]
+y = df["TotalCrimes"]
+
+# 75% training, 25% temporary
+X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.25, random_state=42)
+
+# Split the temporary set: 15% validation, 10% test overall
+X_valid, X_test, y_valid, y_test = train_test_split(X_temp, y_temp, test_size=0.4, random_state=42)
+
+train = pd.concat([X_train, y_train], axis=1)
+valid = pd.concat([X_valid, y_valid], axis=1)
+test = pd.concat([X_test, y_test], axis=1)
+
+train.to_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Assignment 2\train.csv", index=False)
+valid.to_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Assignment 2\valid.csv", index=False)
+test.to_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Assignment 2\test.csv", index=False)
+
+print("✅ Data successfully split and saved!")
+print(f"Training set: {train.shape}")
+print(f"Validation set: {valid.shape}")
+print(f"Test set: {test.shape}")
+
+# Print shapes to check
+print("Training set:", X_train.shape)
+print("Validation set:", X_valid.shape)
+print("Test set:", X_test.shape)
