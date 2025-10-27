@@ -108,12 +108,3 @@ train.to_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Assignment 2\train.csv", 
 valid.to_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Assignment 2\valid.csv", index=False)
 test.to_csv(r"C:\Users\witrz\PycharmProjects\DATA1002\Assignment 2\test.csv", index=False)
 
-print("✅ Data successfully split and saved!")
-print(f"Training set: {train.shape}")
-print(f"Validation set: {valid.shape}")
-print(f"Test set: {test.shape}")
-
-# Print shapes to check
-print("Training set:", X_train.shape)
-print("Validation set:", X_valid.shape)
-print("Test set:", X_test.shape)
