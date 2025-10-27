@@ -18,19 +18,9 @@ def load_and_clean_crime(raw_path, clean_path):
     df.to_csv(clean_path, index=False)
     return df
 
-# using liquor data set to give the crime data set an LGA column so that the datasets will only have the same LGAs
-def load_liquor(path):
-    return pd.read_csv(path)
-
 #normalising suburb names so theyre all upper case
 def normalise_suburbs(df, col="Suburb"):
     df[col] = df[col].str.strip().str.upper()
-    return df
-
-#normalising lga names so theyre all upper case
-def normalise_lga(df, col="LGA"):
-    if col in df.columns:
-        df[col] = df[col].str.replace(" LGA", "", regex=False).str.strip().str.upper()
     return df
 
 #function to apply the manual map with name changes
@@ -38,20 +28,10 @@ def apply_manual_map(df, manual_map, col="Suburb"):
     df[col] = df[col].replace(manual_map)
     return df
 
-#using the liqour dataset to give the suburbs in the crime data set their LGA
-def merge_crime_liquor(crime, liquor):
-    lookup = liquor[["Suburb","LGA"]].drop_duplicates()
-    merged = crime.merge(lookup, on="Suburb", how="left")
-    return merged
-
-#getting rid of suburbs with missing LGA because then they cant be compared with the liquor dataset
-def drop_missing_lga(merged):
-    return merged.dropna(subset=["LGA"])
 
 #manually changing suburb names in both data sets to make them equal
 raw_crime = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Raw\CrimeRawData.csv"
 clean_crime = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\CrimeClean.csv"
-clean_liquor = r"C:\Users\witrz\PycharmProjects\DATA1002\Data Files - Clean\LiquorLicenseClean.csv"
 
 manual_map = {
     "WESTDALE":"WESTDALE (SNOWY VALLEYS)",
@@ -78,29 +58,18 @@ manual_map = {
 }
 #loading my functions
 crime_df = load_and_clean_crime(raw_crime, clean_crime)
-liq_df = load_liquor(clean_liquor)
 crime_df = normalise_suburbs(crime_df)
-liq_df   = normalise_suburbs(liq_df)
 crime_df = apply_manual_map(crime_df, manual_map)
-liq_df   = apply_manual_map(liq_df, manual_map)
+crime_df.to_csv(clean_crime, index=False)
 
-crime_with_lga = merge_crime_liquor(crime_df, liq_df)
-crime_with_lga = drop_missing_lga(crime_with_lga)
-crime_with_lga = normalise_lga(crime_with_lga, "LGA")
+crime = pd.read_csv(clean_crime)
 
-crime_with_lga.to_csv(clean_crime, index=False)
-
-#getting rid of the individual crimes and grouping by LGA
-CR = clean_crime
-crime = pd.read_csv(CR)
-crime = normalise_lga(crime, "LGA")
-
-lga_crimes = (
-    crime.groupby("LGA", as_index=False)["TotalCrimes"]
-         .sum()
-         .sort_values("TotalCrimes", ascending=False)
+suburb_crimes = (
+    crime.groupby("Suburb", as_index=False)["TotalCrimes"]
+    .sum()
+    .sort_values("Suburb", ascending=True)  # Alphabetical order
 )
 
-out = os.path.splitext(CR)[0] + "_LGA_CrimeCounts.csv"
-lga_crimes.to_csv(out, index=False)
+out = os.path.splitext(clean_crime)[0] + "_Suburb_CrimeCounts.csv"
+suburb_crimes.to_csv(out, index=False)
 
