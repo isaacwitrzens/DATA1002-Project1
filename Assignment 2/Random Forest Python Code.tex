@@ -96,3 +96,46 @@ print("\nTest performance")
 print("R²:   " + str(round(test_r2, 4)))
 print("MAE:  " + str(round(test_mae, 2)))
 print("RMSE: " + str(round(test_rmse, 2)))
+
+
+# Predicted vs Actual Plot
+plt.figure(figsize=(6, 6))
+plt.scatter(y_test, preds_test, alpha=0.6)
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], color="red", linestyle="--")
+plt.xlabel("Actual Total Crimes")
+plt.ylabel("Predicted Total Crimes")
+plt.title("Predicted vs Actual Values (Test Set)")
+plt.tight_layout()
+plt.show()
+
+
+# Residuals Distribution Plot
+residuals = y_test - preds_test
+
+plt.figure(figsize=(8, 5))
+plt.hist(residuals, bins=30, edgecolor="black", alpha=0.7)
+plt.axvline(x=0, color="red", linestyle="--")
+plt.xlabel("Residual (Actual - Predicted)")
+plt.ylabel("Frequency")
+plt.title("Distribution of Residuals (Test Set)")
+plt.tight_layout()
+plt.show()
+
+
+# Feature Importances Plot
+importances = rf_best.feature_importances_
+feature_names = X_train.columns
+feature_importances = pd.DataFrame({
+    "Feature": feature_names,
+    "Importance": importances * 100
+})
+feature_importances = feature_importances.sort_values("Importance", ascending=False)
+
+plt.figure(figsize=(10, 6))
+plt.barh(feature_importances["Feature"], feature_importances["Importance"])
+plt.xlabel("Importance (%)")
+plt.ylabel("Feature")
+plt.title("Feature Importances in Random Forest Model")
+plt.gca().invert_yaxis()  # most important on top
+plt.tight_layout()
+plt.show()
