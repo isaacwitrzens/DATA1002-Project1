@@ -1,0 +1,184 @@
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+from sklearn.linear_model import RidgeCV
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+
+base_url = "https://raw.githubusercontent.com/isaacwitrzens/DATA1002-Project1/main/Assignment%202/"
+
+# Try to read remote CSVs first
+train = pd.read_csv(base_url + "train.csv")
+valid = pd.read_csv(base_url + "valid.csv")
+test  = pd.read_csv(base_url + "test.csv")
+
+
+def _looks_like_git_lfs_pointer(df):
+	return df.shape[1] == 1 and (str(df.columns[0]).startswith('version https://git-lfs.github.com/spec/v1') or
+								  (len(df) > 0 and str(df.iat[0, 0]).startswith('version https://git-lfs.github.com/spec/v1')))
+
+if _looks_like_git_lfs_pointer(train) or _looks_like_git_lfs_pointer(valid) or _looks_like_git_lfs_pointer(test):
+	base_dir = os.path.dirname(__file__) or '.'
+	candidates = [os.path.join(base_dir, 'DATA_MLR_KC'), base_dir]
+	found = False
+	for d in candidates:
+		csvs = [os.path.join(d, p) for p in ('train.csv', 'valid.csv', 'test.csv')]
+		txts = [os.path.join(d, p) for p in ('train.txt', 'valid.txt', 'test.txt')]
+		if all(os.path.exists(p) for p in csvs):
+			train = pd.read_csv(csvs[0])
+			valid = pd.read_csv(csvs[1])
+			test  = pd.read_csv(csvs[2])
+			print(f"Loaded local CSVs from {d}")
+			found = True
+			break
+		if all(os.path.exists(p) for p in txts):
+			train = pd.read_csv(txts[0], sep=None, engine='python')
+			valid = pd.read_csv(txts[1], sep=None, engine='python')
+			test  = pd.read_csv(txts[2],  sep=None, engine='python')
+			print(f"Loaded local TXT files from {d}")
+			found = True
+			break
+	if not found:
+		raise RuntimeError("Remote files look like Git LFS pointers. Place the real CSV/TXT files in 'DATA_MLR_KC' or next to this script.")
+
+target = "TotalCrimes"
+
+for df, name in ((train, 'train'), (valid, 'valid'), (test, 'test')):
+	if target not in df.columns:
+		raise KeyError(f"Target column '{target}' not found in {name} dataset; available columns: {list(df.columns)}")
+
+X_train = train.drop(columns=[target])
+y_train = train[target]
+
+X_valid = valid.drop(columns=[target])
+y_valid = valid[target]
+
+X_test  = test.drop(columns=[target])
+y_test  = test[target]
+
+# --- Fit Ridge with built-in CV on training set ---
+lin = RidgeCV(alphas=[0.01, 0.1, 1.0, 10.0], cv=5)
+lin.fit(X_train, y_train)
+print(f"Selected alpha: {lin.alpha_}")
+
+# --- Evaluate on validation set ---
+preds_valid = lin.predict(X_valid)
+val_r2   = r2_score(y_valid, preds_valid)
+val_mae  = mean_absolute_error(y_valid, preds_valid)
+val_rmse = np.sqrt(mean_squared_error(y_valid, preds_valid))
+
+print("\nValidation performance (RidgeCV)")
+print("R²:   ", round(val_r2, 4))
+print("MAE:  ", round(val_mae, 2))
+print("RMSE: ", round(val_rmse, 2))
+
+# --- Retrain on training (or train+valid) and evaluate on test ---
+
+preds_test = lin.predict(X_test)
+test_r2   = r2_score(y_test, preds_test)
+test_mae  = mean_absolute_error(y_test, preds_test)
+test_rmse = np.sqrt(mean_squared_error(y_test, preds_test))
+
+# --- Plots ---
+def plot_pred_vs_true(y_true, y_pred, title, outpath):
+	point_color = '#FFB570' 
+	line_color = '#FF8C42' 
+	ref_color = '#777777'  
+	box_face = '#FFF4E6'     
+	plt.figure(figsize=(6,6))
+	plt.scatter(y_true, y_pred, alpha=0.8, color=point_color, edgecolor='k', linewidth=0.2)
+	mx = max(max(y_true), max(y_pred))
+	mn = min(min(y_true), min(y_pred))
+	# regression line (best-fit)
+	coef = np.polyfit(np.array(y_true).astype(float), np.array(y_pred).astype(float), 1)
+	slope, intercept = coef[0], coef[1]
+	x_line = np.linspace(mn, mx, 100)
+	y_line = slope * x_line + intercept
+	plt.plot(x_line, y_line, color=line_color, linewidth=1.5)
+	# identity line for reference
+	plt.plot([mn, mx], [mn, mx], color=ref_color, linewidth=1, linestyle='--')
+	plt.xlabel('Actual Total Crime')
+	plt.ylabel('Predicted Total Crime')
+	r2 = r2_score(y_true, y_pred)
+	# R^2 
+	ann = f'R²={r2:.3f}'
+	plt.gca().text(0.02, 0.98, ann, transform=plt.gca().transAxes,
+		verticalalignment='top', bbox=dict(boxstyle='round', facecolor=box_face, alpha=0.95))
+	plt.title('Actual vs Predicted Crime Rates')
+	plt.tight_layout()
+	plt.savefig(outpath)
+	try:
+		plt.show()
+	except Exception:
+		pass
+
+def plot_residuals(y_true, y_pred, title, outpath):
+	res = y_true - y_pred
+	plt.figure(figsize=(6,4))
+	orange_color = '#FFB570'
+	dark_orange = '#FF8C42'
+	box_face = '#FFF4E6'
+	plt.hist(res, bins=40, color=orange_color, alpha=0.85)
+	plt.axvline(0, color=dark_orange, linestyle='--', linewidth=1)
+	# set the requested x-axis label
+	plt.xlabel('Actual _ Predicted Total Crime')
+	plt.title(f'Residual Distribution ({title})')
+	# annotate mean and std
+	mean_res = np.mean(res)
+	std_res = np.std(res)
+	ann = f'mean={mean_res:.1f}\nstd={std_res:.1f}'
+	plt.gca().text(0.98, 0.95, ann, transform=plt.gca().transAxes,
+		horizontalalignment='right', verticalalignment='top', bbox=dict(boxstyle='round', facecolor=box_face, alpha=0.95))
+	plt.tight_layout()
+	plt.savefig(outpath)
+	try:
+		plt.show()
+	except Exception:
+		pass
+
+def plot_coefficients(model, X, y, outpath):
+	coefs = np.array(model.coef_).flatten()
+	names = np.array(X.columns)
+	x_stds = X.std(axis=0).values
+	y_std = y.std()
+	std_coefs = coefs * x_stds / (y_std if y_std != 0 else 1.0)
+	order = np.argsort(np.abs(std_coefs))[::-1]
+	vals = std_coefs[order]
+	names_sorted = names[order]
+	plt.figure(figsize=(8, max(3, 0.3 * len(names_sorted))))
+	colors = ['#FF8C42' if v >= 0 else '#FFB570' for v in vals]
+	y_pos = np.arange(len(vals))
+	plt.barh(y_pos, vals, color=colors)
+	plt.yticks(y_pos, names_sorted)
+	plt.xlabel('Standardized coefficient (coef * std(X)/std(y))')
+	plt.title('Key Predictors of Total Crimes')
+	plt.gca().invert_yaxis()
+	for i, v in enumerate(vals):
+		xoff = 0.01 * max(1.0, abs(vals).max())
+		if v >= 0:
+			plt.text(v + xoff, i, f'{v:.2f}', va='center')
+		else:
+			plt.text(v - xoff, i, f'{v:.2f}', va='center', horizontalalignment='right')
+	plt.tight_layout()
+	plt.savefig(outpath)
+	try:
+		plt.show()
+	except Exception:
+		pass
+
+print("\nTest performance (RidgeCV)")
+print("R²:   ", round(test_r2, 4))
+print("MAE:  ", round(test_mae, 2))
+print("RMSE: ", round(test_rmse, 2))
+
+plot_dir = os.path.join(os.path.expanduser('~'), 'Documents', 'DATA_MLR_KC')
+os.makedirs(plot_dir, exist_ok=True)
+
+plot_pred_vs_true(y_valid, preds_valid, 'Validation', os.path.join(plot_dir, 'pred_vs_true_valid.png'))
+plot_residuals(y_valid, preds_valid, 'Validation', os.path.join(plot_dir, 'residuals_valid.png'))
+
+plot_pred_vs_true(y_test, preds_test, 'Test', os.path.join(plot_dir, 'pred_vs_true_test.png'))
+plot_residuals(y_test, preds_test, 'Test', os.path.join(plot_dir, 'residuals_test.png'))
+
+# coefficient plot (standardized coefficients)
+plot_coefficients(lin, X_train, y_train, os.path.join(plot_dir, 'coefficients.png'))
